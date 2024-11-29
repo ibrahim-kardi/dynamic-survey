@@ -1,0 +1,17 @@
+{
+  "name": "codexpert/dynamic-survey",
+  "description": "Dynamic Survey and Results plugin",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Codexpert\\DynamicSurvey\\": "includes/"
+    }
+  },
+  "authors": [
+    {
+      "name": "ibrahim"
+    }
+  ],
+  "minimum-stability": "dev",
+  "require": {}
+}

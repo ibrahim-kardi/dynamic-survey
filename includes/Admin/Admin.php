@@ -1,0 +1,125 @@
+<?php
+namespace DynamicSurvey\Admin;
+
+class Admin {
+
+    public function __construct() {
+        add_action('admin_menu', [$this, 'add_admin_pages']);
+        add_action('admin_post_save_survey', [$this, 'save_survey']);
+        add_action('admin_post_delete_survey', [$this, 'delete_survey']);
+        add_action('admin_post_close_survey', [$this, 'close_survey']);
+    }
+
+    public function add_admin_pages() {
+        // Main Dynamic Survey Page
+        add_submenu_page(
+            'tools.php',
+            'Dynamic Survey',
+            'Dynamic Survey',
+            'manage_options',
+            'dynamic-survey',
+            [$this, 'render_admin_page']
+        );
+
+        // Edit Survey Page (Hidden submenu)
+        add_submenu_page(
+            null, // Hidden menu
+            'Edit Survey',
+            'Edit Survey',
+            'manage_options',
+            'edit-survey',
+            [$this, 'render_edit_page']
+        );
+    }
+
+    public function render_admin_page() {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'dynamic_surveys';
+        $surveys = $wpdb->get_results("SELECT * FROM $table_name");
+
+        include plugin_dir_path(__FILE__) . 'views/admin-page.php';
+    }
+
+    public function render_edit_page() {
+        if (!isset($_GET['survey_id'])) {
+            wp_die('Invalid survey ID.');
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'dynamic_surveys';
+        $survey_id = intval($_GET['survey_id']);
+
+        $survey = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $survey_id));
+
+        if (!$survey) {
+            wp_die('Survey not found.');
+        }
+
+        include plugin_dir_path(__FILE__) . 'views/edit-survey.php';
+    }
+
+    public function save_survey() {
+   if (!current_user_can('manage_options') || !check_admin_referer('save_survey_nonce')) {
+        wp_die('Unauthorized action.');
+    }
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'dynamic_surveys';
+
+    $question = sanitize_text_field($_POST['question']);
+    $options = isset($_POST['options']) ? explode("\n", sanitize_textarea_field($_POST['options'])) : [];
+    $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'open';
+
+    if (!empty($options)) {
+        $options = array_map('trim', $options); // Trim whitespace
+        $options_serialized = maybe_serialize($options); // Serialize for database storage
+    } else {
+        $options_serialized = maybe_serialize([]); // Ensure empty array if no options
+    }
+
+    // Check if it's an update or new survey
+    if (!empty($_POST['survey_id'])) {
+        $survey_id = absint($_POST['survey_id']);
+        $wpdb->update(
+            $table_name,
+            [
+                'question' => $question,
+                'options' => $options_serialized,
+                'status' => $status
+            ],
+            ['id' => $survey_id]
+        );
+    } else {
+        $wpdb->insert(
+            $table_name,
+            [
+                'question' => $question,
+                'options' => $options_serialized,
+                'status' => $status
+            ]
+        );
+    }
+
+    wp_redirect(admin_url('tools.php?page=dynamic-survey'));
+    exit;
+    }
+
+    public function delete_survey() {
+        if (!current_user_can('manage_options')) return;
+
+        check_admin_referer('delete_survey_nonce');
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'dynamic_surveys';
+        $survey_id = intval($_GET['survey_id']);
+
+        $wpdb->delete($table_name, ['id' => $survey_id]);
+
+        wp_redirect(admin_url('tools.php?page=dynamic-survey'));
+        exit;
+    }
+
+    public function close_survey() {
+       
+    }
+}
