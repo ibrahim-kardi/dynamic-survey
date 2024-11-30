@@ -83,7 +83,14 @@ final class DynamicSurveyPlugin {
         '1.0.0', // Version
         true // Load in footer
     );
-
+        // Enqueue Chart.js
+    wp_enqueue_script(
+        'chartjs', 
+        'https://cdn.jsdelivr.net/npm/chart.js', 
+        [], // No dependencies
+        '3.7.0', // Version
+        true // Load in footer
+    );
     // Localize script to pass AJAX URL and nonce
     wp_localize_script('dynamic-survey-script', 'dynamicSurvey', [
         'ajax_url' => admin_url('admin-ajax.php'),

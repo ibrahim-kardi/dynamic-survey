@@ -8,8 +8,6 @@ class Shortcode {
         add_action('wp_ajax_nopriv_submit_survey_vote', [$this, 'restrict_non_logged_in']);
     }
 
- 
-
 public function render_survey_shortcode($atts) {
     $atts = shortcode_atts(['id' => 0], $atts, 'dynamic_survey');
     $survey_id = intval($atts['id']);
@@ -75,56 +73,59 @@ public function submit_vote() {
 
     check_ajax_referer('submit_survey_vote_nonce', '_ajax_nonce');
 
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'dynamic_survey_votes';
-    $survey_id = intval($_POST['survey_id']);
-    $option = sanitize_text_field($_POST['option']);
-    $user_id = get_current_user_id();
+  // Retrieve and sanitize input
+        $survey_id = isset($_POST['survey_id']) ? intval($_POST['survey_id']) : 0;
+        $option = isset($_POST['option']) ? sanitize_text_field($_POST['option']) : '';
+        $user_id = get_current_user_id();
 
-    error_log("Survey ID: $survey_id, Option: $option, User ID: $user_id"); // Debug log
+        if (!$survey_id || !$option) {
+            wp_send_json_error(['message' => 'Invalid input.']);
+        }
 
-    // Check if user has already voted
-    $has_voted = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $table_name WHERE survey_id = %d AND user_id = %d",
-        $survey_id,
-        $user_id
-    ));
-
-    if ($has_voted) {
-        wp_send_json_error(['message' => 'You have already voted in this survey.']);
-    }
-
-    // Insert the vote
-        $wpdb->insert(
-            $table_name,
-            [
-                'survey_id' => $survey_id,
-                'user_id' => $user_id,
-                'option_selected' => $option, // Updated column name
-            ]
-        );
-
-    // Return the updated results
-    $html = $this->render_results($survey_id);
-    wp_send_json_success(['message' => 'Thank you for voting!', 'html' => $html]);
-}
-
-    private function render_results($survey_id) {
         global $wpdb;
         $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
 
-        // Get vote counts
+        // Insert vote into database
+        $inserted = $wpdb->insert(
+            $votes_table,
+            [
+                'survey_id' => $survey_id,
+                'user_id' => $user_id ?: null,
+                'ip_address' => $user_id ? null : $_SERVER['REMOTE_ADDR'],
+                'option_selected' => $option,
+            ],
+            ['%d', '%d', '%s', '%s']
+        );
+
+        if ($inserted === false) {
+            wp_send_json_error(['message' => 'Failed to submit vote.']);
+        }
+
+        // Prepare response with updated results
+        $response = [
+            'success' => true,
+            'data' => [
+                'message' => 'Thank you for voting!',
+                'html' => $this->render_results($survey_id), // Render the results dynamically
+            ],
+        ];
+
+        wp_send_json($response);
+}
+
+private function render_results($survey_id) {
+        global $wpdb;
+        $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
+
         $results = $wpdb->get_results($wpdb->prepare(
             "SELECT option_selected, COUNT(*) as count FROM $votes_table WHERE survey_id = %d GROUP BY option_selected",
             $survey_id
         ));
 
-
         if (empty($results)) {
             return '<p>No votes have been cast yet.</p>';
         }
 
-        // Prepare data for chart
         $data = [
             'labels' => [],
             'counts' => [],
@@ -141,16 +142,26 @@ public function submit_vote() {
         <script>
             (function() {
                 const ctx = document.getElementById('survey-results-chart').getContext('2d');
-                console.log(<?php echo json_encode($data['labels']); ?>);   
                 new Chart(ctx, {
-                    type: 'pie', // Change to 'bar' for bar chart
+                    type: 'pie', // Change to 'bar' if needed
                     data: {
                         labels: <?php echo json_encode($data['labels']); ?>,
                         datasets: [{
                             label: 'Votes',
                             data: <?php echo json_encode($data['counts']); ?>,
-                            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+                            backgroundColor: [
+                                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                            ],
+                            borderWidth: 1
                         }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                        },
                     }
                 });
             })();
@@ -158,6 +169,7 @@ public function submit_vote() {
         <?php
         return ob_get_clean();
     }
+
 
     public function restrict_non_logged_in() {
         wp_send_json_error(['message' => 'You must be logged in to vote.']);
