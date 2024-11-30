@@ -6,19 +6,19 @@
         <input type="hidden" name="action" value="save_survey">
         <?php wp_nonce_field('save_survey_nonce'); ?>
 
-        <p>
+            <p>
             <label for="question"><strong>Question:</strong></label>
-            <input type="text" name="question" id="question" class="regular-text" required>
-        </p>
-        <p>
-            <label for="question_type"><strong>Question Type:</strong></label>
-            <select name="question_type" id="question_type" required>
-                <option value="choice">Multiple Choice</option>
-                <option value="text">Text</option>
-            </select>
-        </p>
+            </p>
+           <p><input type="text" name="question" id="question" class="regular-text" required></p>
+        <p><label for="question_type"><strong>Question Type:</strong></label> </p>
+            <p> 
+                <select name="question_type" id="question_type" required>
+                    <option value="choice">Multiple Choice</option>
+                    <option value="text">Text</option>
+                </select>
+            </p>
         <p id="options-container">
-            <label for="options"><strong>Options (one per line):</strong></label>
+            <p><label for="options"><strong>Options (one per line):</strong></label></p>
             <textarea name="options" id="options" rows="4" cols="50"></textarea>
         </p>
         <button type="submit" class="button button-primary">Create Survey</button>
@@ -49,8 +49,15 @@
                             ?>
                         </td>
                         <td>
+                            <?php if (current_user_can('manage_options')): ?>
                             <a href="<?php echo esc_url(admin_url('admin.php?page=edit-dynamic-survey&survey_id=' . $survey->id)); ?>" class="button">Edit</a>
                             <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=delete_survey&survey_id=' . $survey->id), 'delete_survey_nonce')); ?>" class="button button-danger" onclick="return confirm('Are you sure?');">Delete</a>
+                            
+                            <a href="<?php echo admin_url('admin-ajax.php?action=export_survey_results&survey_id=' . esc_attr($survey->id)); ?>" 
+                            class="button button-primary">
+                                Export Results to CSV
+                            </a>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
