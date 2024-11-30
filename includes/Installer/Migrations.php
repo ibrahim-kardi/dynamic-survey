@@ -2,8 +2,7 @@
 namespace DynamicSurvey\Installer;
 
 class Migrations {
-
-   public static function create_tables() {
+    public static function create_tables() {
         global $wpdb;
 
         $charset_collate = $wpdb->get_charset_collate();
@@ -15,7 +14,7 @@ class Migrations {
                 id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 question TEXT NOT NULL,
                 options TEXT NOT NULL,
-                status ENUM('open', 'closed') DEFAULT 'open',
+                type ENUM('choice', 'text') DEFAULT 'choice',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             ) $charset_collate;
 

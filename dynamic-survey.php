@@ -25,6 +25,7 @@
 final class DynamicSurveyPlugin {
 
     private static $instance = null;
+
     /**
      * class constructor
      */
@@ -32,12 +33,11 @@ final class DynamicSurveyPlugin {
         $this->register_autoloader();
         $this->initialize_classes();
         register_activation_hook(__FILE__, [$this, 'activate']);
-         add_action('wp_ajax_submit_survey_vote',  'submit_vote');
+        add_action('wp_ajax_submit_survey_vote',  'submit_vote');
         add_action('wp_ajax_nopriv_submit_survey_vote','restrict_non_logged_in');
 
-
         add_action('wp_enqueue_scripts', [$this, 'enqueue_dynamic_survey_scripts']);
-        
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_scripts']);
     }
 
     public static function get_instance() {
@@ -71,32 +71,42 @@ final class DynamicSurveyPlugin {
     public function activate() {
         DynamicSurvey\Installer\Migrations::create_tables();
     }
-    
-    function enqueue_dynamic_survey_scripts() {
-    wp_enqueue_script('jquery');
 
-    // Enqueue your custom script
-    wp_enqueue_script(
-        'dynamic-survey-script', // Handle
-        plugin_dir_url(__FILE__) . 'assets/js/dynamic-survey.js', // Path to your JS file
-        ['jquery'], // Dependencies
-        '1.0.0', // Version
-        true // Load in footer
-    );
+    function enqueue_dynamic_survey_scripts() {
+        wp_enqueue_script('jquery');
+        // Enqueue your custom script
+        wp_enqueue_script(
+            'dynamic-survey-script', // Handle
+            plugin_dir_url(__FILE__) . 'assets/js/dynamic-survey.js', // Path to your JS file
+            ['jquery'], // Dependencies
+            '1.0.0', // Version
+            true // Load in footer
+        );
         // Enqueue Chart.js
-    wp_enqueue_script(
-        'chartjs', 
-        'https://cdn.jsdelivr.net/npm/chart.js', 
-        [], // No dependencies
-        '3.7.0', // Version
-        true // Load in footer
-    );
-    // Localize script to pass AJAX URL and nonce
-    wp_localize_script('dynamic-survey-script', 'dynamicSurvey', [
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('submit_survey_vote_nonce')
-    ]);
-}
+        wp_enqueue_script(
+            'chartjs', 
+            'https://cdn.jsdelivr.net/npm/chart.js', 
+            [], // No dependencies
+            '3.7.0', // Version
+            true // Load in footer
+        );
+        // Localize script to pass AJAX URL and nonce
+        wp_localize_script('dynamic-survey-script', 'dynamicSurvey', [
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('submit_survey_vote_nonce')
+        ]);
+    }
+
+    function enqueue_admin_scripts() {
+        wp_enqueue_script(
+            'admin-form-script', // Handle
+            plugin_dir_url(__FILE__) . 'assets/js/admin-form.js', // Path to your JS file
+            ['jquery'], // Dependencies
+            '1.0.0', // Version
+            true // Load in footer
+        );
+    }
+
 }
 
 DynamicSurveyPlugin::get_instance();

@@ -1,5 +1,6 @@
 <?php
 namespace DynamicSurvey\Frontend;
+
 class Shortcode {
 
     public function __construct() {
@@ -8,72 +9,82 @@ class Shortcode {
         add_action('wp_ajax_nopriv_submit_survey_vote', [$this, 'restrict_non_logged_in']);
     }
 
-public function render_survey_shortcode($atts) {
-    $atts = shortcode_atts(['id' => 0], $atts, 'dynamic_survey');
-    $survey_id = intval($atts['id']);
+    /**
+     * Renders the survey shortcode and passes the survey type to the frontend
+     */
+    public function render_survey_shortcode($atts) {
+        $atts = shortcode_atts(['id' => 0], $atts, 'dynamic_survey');
+        $survey_id = intval($atts['id']);
 
-    if (!$survey_id) {
-        return '<p>Invalid survey ID.</p>';
+        if (!$survey_id) {
+            return '<p>Invalid survey ID.</p>';
+        }
+
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'dynamic_surveys';
+        $survey = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $survey_id));
+
+        if (!$survey) {
+            return '<p>Survey not found.</p>';
+        }
+
+        // Enqueue the script only when rendering the survey (pass survey type dynamically)
+        wp_enqueue_script('dynamic-survey-script');
+        wp_localize_script('dynamic-survey-script', 'surveyData', [
+            'surveyType' => $survey->type,  // Pass the survey type to JS
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('submit_survey_vote_nonce')
+        ]);
+
+        $user_id = get_current_user_id();
+        $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
+        $has_voted = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $votes_table WHERE survey_id = %d AND user_id = %d",
+            $survey_id,
+            $user_id
+        ));
+
+        if ($has_voted) {
+            return $this->render_results($survey_id);
+        }
+
+        $options = maybe_unserialize($survey->options);
+        if (is_array($options) && count($options) === 1 && is_string($options[0])) {
+            $options = explode(',', $options[0]); // Handle single-string options
+        }
+
+        ob_start();
+        ?>
+        <form id="dynamic-survey-form" data-survey-id="<?php echo esc_attr($survey_id); ?>"  data-survey-type="<?php echo esc_attr($survey->type); ?>">
+            <h3><?php echo esc_html($survey->question); ?></h3>
+            <div>
+                <?php if ($survey->type == 'choice'): ?>
+                    <?php foreach ($options as $option): ?>
+                        <p>
+                            <label>
+                                <input type="radio" name="survey_option" value="<?php echo esc_attr(trim($option)); ?>" required>
+                                <?php echo esc_html(trim($option)); ?>
+                            </label>
+                        </p>
+                    <?php endforeach; ?>
+                <?php elseif ($survey->type == 'text'): ?>
+                    <textarea name="survey_option" placeholder="Your answer" required></textarea>
+                <?php endif; ?>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+        <div id="survey-message"></div>
+        <?php
+        return ob_get_clean();
     }
 
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'dynamic_surveys';
-    $survey = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $survey_id));
+    public function submit_vote() {
+        if (!is_user_logged_in()) {
+            wp_send_json_error(['message' => 'You must be logged in to vote.']);
+        }
 
-    if (!$survey) {
-        return '<p>Survey not found.</p>';
-    }
+        check_ajax_referer('submit_survey_vote_nonce', '_ajax_nonce');
 
-    $user_id = get_current_user_id();
-    $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
-    $has_voted = $wpdb->get_var($wpdb->prepare(
-        "SELECT COUNT(*) FROM $votes_table WHERE survey_id = %d AND user_id = %d",
-        $survey_id,
-        $user_id
-    ));
-
-    if ($has_voted) {
-        return $this->render_results($survey_id);
-    }
-
-    $options = maybe_unserialize($survey->options);
-    if (is_array($options) && count($options) === 1 && is_string($options[0])) {
-        $options = explode(',', $options[0]); // Handle single-string options
-    }
-
-    ob_start();
-    ?>
-    <form id="dynamic-survey-form" data-survey-id="<?php echo esc_attr($survey_id); ?>">
-        <h3><?php echo esc_html($survey->question); ?></h3>
-        <div>
-            <?php foreach ($options as $option): ?>
-                <p>
-                    <label>
-                        <input type="radio" name="survey_option" value="<?php echo esc_attr(trim($option)); ?>" required>
-                        <?php echo esc_html(trim($option)); ?>
-                    </label>
-                </p>
-            <?php endforeach; ?>
-        </div>
-        <button type="submit">Submit</button>
-    </form>
-    <div id="survey-message"></div>
-
-    <?php
-    return ob_get_clean();
-}
-
-
-public function submit_vote() {
-    error_log('AJAX request received'); // Debug log
-
-    if (!is_user_logged_in()) {
-        wp_send_json_error(['message' => 'You must be logged in to vote.']);
-    }
-
-    check_ajax_referer('submit_survey_vote_nonce', '_ajax_nonce');
-
-  // Retrieve and sanitize input
         $survey_id = isset($_POST['survey_id']) ? intval($_POST['survey_id']) : 0;
         $option = isset($_POST['option']) ? sanitize_text_field($_POST['option']) : '';
         $user_id = get_current_user_id();
@@ -85,7 +96,6 @@ public function submit_vote() {
         global $wpdb;
         $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
 
-        // Insert vote into database
         $inserted = $wpdb->insert(
             $votes_table,
             [
@@ -101,19 +111,18 @@ public function submit_vote() {
             wp_send_json_error(['message' => 'Failed to submit vote.']);
         }
 
-        // Prepare response with updated results
         $response = [
             'success' => true,
             'data' => [
                 'message' => 'Thank you for voting!',
-                'html' => $this->render_results($survey_id), // Render the results dynamically
+                'html' => $this->render_results($survey_id),
             ],
         ];
 
         wp_send_json($response);
-}
+    }
 
-private function render_results($survey_id) {
+    private function render_results($survey_id) {
         global $wpdb;
         $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
 
@@ -143,7 +152,7 @@ private function render_results($survey_id) {
             (function() {
                 const ctx = document.getElementById('survey-results-chart').getContext('2d');
                 new Chart(ctx, {
-                    type: 'pie', // Change to 'bar' if needed
+                    type: 'pie',
                     data: {
                         labels: <?php echo json_encode($data['labels']); ?>,
                         datasets: [{
@@ -170,11 +179,9 @@ private function render_results($survey_id) {
         return ob_get_clean();
     }
 
-
     public function restrict_non_logged_in() {
         wp_send_json_error(['message' => 'You must be logged in to vote.']);
     }
-
 }
 
 new Shortcode();
