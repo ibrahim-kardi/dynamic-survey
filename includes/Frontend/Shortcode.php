@@ -191,48 +191,51 @@ class Shortcode {
 	public function restrict_non_logged_in() {
 		wp_send_json_error( [ 'message' => 'You must be logged in to vote.' ] );
 	}
-    /**
-     * Export survey results as CSV
-     */
-    public function export_survey_results() {
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized access.']);
-        }
 
-        $survey_id = isset($_GET['survey_id']) ? intval($_GET['survey_id']) : 0;
-        if (!$survey_id) {
-            wp_send_json_error(['message' => 'Invalid survey ID.']);
-        }
+	/**
+	 * Export survey results as CSV
+	 */
+	public function export_survey_results() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => 'Unauthorized access.' ] );
+		}
 
-        global $wpdb;
-        $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
+		$survey_id = isset( $_GET['survey_id'] ) ? intval( $_GET['survey_id'] ) : 0;
+		if ( ! $survey_id ) {
+			wp_send_json_error( [ 'message' => 'Invalid survey ID.' ] );
+		}
 
-        $results = $wpdb->get_results($wpdb->prepare(
-            "SELECT option_selected, COUNT(*) as count FROM $votes_table WHERE survey_id = %d GROUP BY option_selected",
-            $survey_id
-        ));
+		global $wpdb;
+		$votes_table = $wpdb->prefix . 'dynamic_survey_votes';
 
-        if (empty($results)) {
-            wp_send_json_error(['message' => 'No results found for the survey.']);
-        }
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT option_selected, COUNT(*) as count FROM $votes_table WHERE survey_id = %d GROUP BY option_selected",
+				$survey_id
+			)
+		);
 
-        // Generate CSV content
-        $csv_data = [];
-        $csv_data[] = ['Option', 'Votes'];
-        foreach ($results as $row) {
-            $csv_data[] = [$row->option_selected, $row->count];
-        }
+		if ( empty( $results ) ) {
+			wp_send_json_error( [ 'message' => 'No results found for the survey.' ] );
+		}
 
-        // Send headers and output CSV
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="survey_results.csv"');
-        $output = fopen('php://output', 'w');
-        foreach ($csv_data as $line) {
-            fputcsv($output, $line);
-        }
-        fclose($output);
-        exit;
-    }
+		// Generate CSV content
+		$csv_data   = [];
+		$csv_data[] = [ 'Option', 'Votes' ];
+		foreach ( $results as $row ) {
+			$csv_data[] = [ $row->option_selected, $row->count ];
+		}
+
+		// Send headers and output CSV
+		header( 'Content-Type: text/csv' );
+		header( 'Content-Disposition: attachment; filename="survey_results.csv"' );
+		$output = fopen( 'php://output', 'w' );
+		foreach ( $csv_data as $line ) {
+			fputcsv( $output, $line );
+		}
+		fclose( $output );
+		exit;
+	}
 }
 
 new Shortcode();

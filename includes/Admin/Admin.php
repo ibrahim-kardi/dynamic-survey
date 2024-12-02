@@ -22,8 +22,8 @@ class Admin {
 		// Edit Survey Page
 		add_submenu_page(
 			null, // Hidden from menu
-            esc_html__( 'Edit Survey', 'dynamic-survey' ),
-			 esc_html__( 'Edit Survey', 'dynamic-survey' ),
+			esc_html__( 'Edit Survey', 'dynamic-survey' ),
+			esc_html__( 'Edit Survey', 'dynamic-survey' ),
 			'manage_options',
 			'edit-dynamic-survey',
 			[ $this, 'render_edit_page' ]

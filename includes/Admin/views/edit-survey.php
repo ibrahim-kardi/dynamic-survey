@@ -18,7 +18,7 @@
 			</select>
 		</p>
 		<div id="options-container">
-			<label for="options"><strong><?php esc_html_e( 'Options (one per line):', 'dynamic-survey' ); ?></strong></label><br>
+			<label for="options"><strong><?php esc_html_e( 'Options (comma separated):', 'dynamic-survey' ); ?></strong></label><br>
 			<textarea name="options" id="options" rows="4" cols="50">
 			<?php
 				$options = maybe_unserialize( $survey->options );
