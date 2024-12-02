@@ -19,7 +19,7 @@
 			</select>
 		</p>
 		<p id="options-container">
-			<label for="options"><strong><?php esc_html_e( 'Options (one per line):', 'dynamic-survey' ); ?></strong></label><br>
+			<label for="options"><strong><?php esc_html_e( 'Options (comma separated):', 'dynamic-survey' ); ?></strong></label><br>
 			<textarea name="options" id="options" rows="4" cols="50"></textarea>
 		</p>
 		<button type="submit" class="button button-primary"><?php esc_html_e( 'Create Survey', 'dynamic-survey' ); ?></button>
