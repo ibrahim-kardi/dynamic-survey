@@ -7,6 +7,15 @@
       "Codexpert\\DynamicSurvey\\": "includes/"
     }
   },
+  "require-dev": {
+    "wp-coding-standards/wpcs": "^2.3",
+    "phpcompatibility/phpcompatibility-wp": "^2.1"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  },
   "authors": [
     {
       "name": "ibrahim"

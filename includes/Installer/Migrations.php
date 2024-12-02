@@ -2,14 +2,15 @@
 namespace DynamicSurvey\Installer;
 
 class Migrations {
-    public static function create_tables() {
-        global $wpdb;
 
-        $charset_collate = $wpdb->get_charset_collate();
-        $survey_table = $wpdb->prefix . 'dynamic_surveys';
-        $votes_table = $wpdb->prefix . 'dynamic_survey_votes';
+	public static function create_tables() {
+		global $wpdb;
 
-        $sql = "
+		$charset_collate = $wpdb->get_charset_collate();
+		$survey_table    = $wpdb->prefix . 'dynamic_surveys';
+		$votes_table     = $wpdb->prefix . 'dynamic_survey_votes';
+
+		$sql = "
             CREATE TABLE $survey_table (
                 id BIGINT(20) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 question TEXT NOT NULL,
@@ -30,7 +31,7 @@ class Migrations {
             ) $charset_collate;
         ";
 
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        dbDelta($sql);
-    }
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql );
+	}
 }

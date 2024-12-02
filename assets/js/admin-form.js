@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const questionTypeSelect = document.getElementById("question_type");
   const optionsContainer = document.getElementById("options-container");
   const optionsTextarea = document.getElementById("options");
-
+  console.log(questionTypeSelect);
   function toggleOptions() {
     if (questionTypeSelect.value === "text") {
       optionsContainer.style.display = "none";
