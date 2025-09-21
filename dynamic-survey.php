@@ -3,7 +3,7 @@
  * Plugin Name: Dynamic Survey and Results
  * Description: Create dynamic surveys and display results visually.
  * Version: 1.0.0
- * Author: Codexpert
+ * Author: Ibrahim
  * Text Domain: dynamic-survey
  * Domain Path: /languages
  * Tested up to: 6.2
